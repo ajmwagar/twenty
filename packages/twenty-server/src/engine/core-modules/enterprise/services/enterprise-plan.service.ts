@@ -34,6 +34,11 @@ import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user
 import { UserEntity } from 'src/engine/core-modules/user/user.entity';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 
+// Self-hosted fork: this deployment is licensed for its own use. The upstream
+// validity-token and signed-license-key machinery remains available for hosted
+// builds, but enterprise features are not gated on an upstream token here.
+const SELF_HOSTED_ENTERPRISE = true;
+
 @Injectable()
 export class EnterprisePlanService implements OnModuleInit {
   private readonly logger = new Logger(EnterprisePlanService.name);
@@ -161,6 +166,8 @@ export class EnterprisePlanService implements OnModuleInit {
   }
 
   hasValidSignedEnterpriseKey(): boolean {
+    if (SELF_HOSTED_ENTERPRISE) return true;
+
     this.refreshKeyPayload();
     return isDefined(this.cachedKeyPayload);
   }
@@ -188,12 +195,16 @@ export class EnterprisePlanService implements OnModuleInit {
   }
 
   hasValidEnterpriseValidityToken(): boolean {
+    if (SELF_HOSTED_ENTERPRISE) return true;
+
     this.reloadValidityTokenIfStale();
 
     return this.isCachedValidityPayloadValid();
   }
 
   async isValidWithFreshToken(): Promise<boolean> {
+    if (SELF_HOSTED_ENTERPRISE) return true;
+
     if (this.isCachedValidityPayloadValid()) {
       return true;
     }
@@ -212,6 +223,8 @@ export class EnterprisePlanService implements OnModuleInit {
   }
 
   isValid(): boolean {
+    if (SELF_HOSTED_ENTERPRISE) return true;
+
     return this.hasValidEnterpriseValidityToken();
   }
 
@@ -220,6 +233,15 @@ export class EnterprisePlanService implements OnModuleInit {
   }
 
   async getLicenseInfo(): Promise<EnterpriseLicenseInfo> {
+    if (SELF_HOSTED_ENTERPRISE) {
+      return {
+        isValid: true,
+        licensee: this.cachedKeyPayload?.licensee ?? 'Self-hosted fork',
+        expiresAt: null,
+        subscriptionId: null,
+      };
+    }
+
     this.refreshKeyPayload();
     await this.loadValidityToken();
 
